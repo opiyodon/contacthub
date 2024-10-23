@@ -1,0 +1,103 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary: #FF9500;
+  --secondary: #2A2A2A;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  color: #ffffff;
+  overflow-x: hidden; /* Prevent horizontal scrolling on mobile */
+}
+
+/* Custom Scrollbar for WebKit browsers */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--secondary);
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--primary);
+  border-radius: 5px;
+  border: 2px solid var(--secondary);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #ff9500dd;
+}
+
+/* Firefox scrollbar customization */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--primary) var(--secondary);
+}
+
+/* Refined animations for better mobile performance */
+.animate-glow {
+  animation: glow 3s ease-in-out infinite alternate;
+}
+
+@keyframes glow {
+  0% {
+    box-shadow: 0 0 5px rgba(255, 149, 0, 0.5);
+  }
+  100% {
+    box-shadow: 0 0 15px rgba(255, 149, 0, 0.8);
+  }
+}
+
+.animate-glow-mini {
+  animation: glow-mini 3s ease-in-out infinite alternate;
+}
+
+@keyframes glow-mini {
+  0% {
+    box-shadow: 0 0 3px rgba(255, 149, 0, 0.4);
+  }
+  100% {
+    box-shadow: 0 0 8px rgba(255, 149, 0, 0.6);
+  }
+}
+
+.animate-glow-mini-extra {
+  animation: glow-mini-extra 3s ease-in-out infinite alternate;
+}
+
+@keyframes glow-mini-extra {
+  0% {
+    box-shadow: 0 0 2px rgba(255, 149, 0, 0.3);
+  }
+  100% {
+    box-shadow: 0 0 5px rgba(255, 149, 0, 0.5);
+  }
+}
+
+.glass-effect {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Mobile-specific styles */
+@media (max-width: 1024px) {
+  .sidebar-closed {
+    transform: translateX(-100%);
+    visibility: hidden;
+  }
+  
+  .sidebar-open {
+    transform: translateX(0);
+    visibility: visible;
+  }
+}
