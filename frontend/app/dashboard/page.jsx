@@ -18,33 +18,40 @@ export default function Dashboard() {
     const [password, setPassword] = useState('')
     const [isLoading, setIsLoading] = useState(false)
     const router = useRouter()
-    const { logout } = useAuth()
+    const { logout, deleteAccount } = useAuth()
 
     const handleLogout = async () => {
         setIsLoading(true)
-        await logout()
-        router.push('/')
+        try {
+            await logout()
+            router.push('/')
+        } catch (error) {
+            console.error('Logout error:', error)
+            toast.error('Failed to logout')
+        } finally {
+            setIsLoading(false)
+        }
     }
 
     const handleDeleteAccount = async () => {
         try {
-            const res = await fetch('http://127.0.0.1:5000/api/delete-account', {
-                method: 'DELETE',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
-                },
-                body: JSON.stringify({ password })
-            })
+            if (!password) {
+                toast.error('Please enter your password')
+                return
+            }
 
-            if (res.ok) {
-                toast.success('Account deleted successfully')
-                handleLogout()
-            } else {
-                toast.error('Failed to delete account. Please check your password.')
+            setIsLoading(true)
+            const success = await deleteAccount(password)
+
+            if (success) {
+                setShowDeleteModal(false)
+                router.push('/')
             }
         } catch (error) {
-            toast.error('An error occurred while deleting account')
+            console.error('Delete account error:', error)
+            toast.error('Failed to delete account')
+        } finally {
+            setIsLoading(false)
         }
     }
 

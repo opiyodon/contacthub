@@ -442,3 +442,82 @@ def reset_password():
     except Exception as e:
         print(f"Reset password error: {str(e)}")
         return jsonify({'error': 'Password reset failed', 'details': str(e)}), 500
+    
+@auth_bp.route('/api/logout', methods=['POST'])
+def logout():
+    try:
+        # Get the token from Authorization header
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or 'Bearer' not in auth_header:
+            return jsonify({'error': 'Invalid token format'}), 401
+        
+        token = auth_header.split(' ')[1]
+        
+        try:
+            # Verify token
+            payload = jwt.decode(token, Config.JWT_SECRET_KEY, algorithms=['HS256'])
+            user_id = payload['user_id']
+            
+            # Optional: You could maintain a blacklist of invalidated tokens
+            # or update user's last_logout timestamp
+            mongo.db.users.update_one(
+                {'_id': ObjectId(user_id)},
+                {'$set': {'last_logout': datetime.utcnow()}}
+            )
+            
+            return jsonify({'message': 'Logged out successfully'}), 200
+            
+        except jwt.ExpiredSignatureError:
+            return jsonify({'error': 'Token has expired'}), 401
+        except jwt.InvalidTokenError:
+            return jsonify({'error': 'Invalid token'}), 401
+            
+    except Exception as e:
+        print(f"Logout error: {str(e)}")
+        return jsonify({'error': 'Logout failed', 'details': str(e)}), 500
+
+@auth_bp.route('/api/delete-account', methods=['DELETE'])
+def delete_account():
+    try:
+        # Get the token from Authorization header
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or 'Bearer' not in auth_header:
+            return jsonify({'error': 'Invalid token format'}), 401
+        
+        token = auth_header.split(' ')[1]
+        data = request.get_json()
+        password = data.get('password')
+        
+        if not password:
+            return jsonify({'error': 'Password is required'}), 400
+        
+        try:
+            # Verify token
+            payload = jwt.decode(token, Config.JWT_SECRET_KEY, algorithms=['HS256'])
+            user_id = payload['user_id']
+            
+            # Find user
+            user = mongo.db.users.find_one({'_id': ObjectId(user_id)})
+            if not user:
+                return jsonify({'error': 'User not found'}), 404
+                
+            # Verify password
+            if not check_password_hash(user['password'], password):
+                return jsonify({'error': 'Invalid password'}), 401
+            
+            # Delete all user's contacts
+            mongo.db.contacts.delete_many({'user_id': ObjectId(user_id)})
+            
+            # Delete user account
+            mongo.db.users.delete_one({'_id': ObjectId(user_id)})
+            
+            return jsonify({'message': 'Account deleted successfully'}), 200
+            
+        except jwt.ExpiredSignatureError:
+            return jsonify({'error': 'Token has expired'}), 401
+        except jwt.InvalidTokenError:
+            return jsonify({'error': 'Invalid token'}), 401
+            
+    except Exception as e:
+        print(f"Delete account error: {str(e)}")
+        return jsonify({'error': 'Account deletion failed', 'details': str(e)}), 500
