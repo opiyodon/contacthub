@@ -89,6 +89,59 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
+@keyframes slide-in {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-in {
+  animation: slide-in 0.3s ease-out;
+}
+
+.glass-effect {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.animate-glow-mini {
+  animation: glow 2s ease-in-out infinite alternate;
+}
+
+@keyframes glow {
+  from {
+    box-shadow: 0 0 10px rgba(255, 149, 0, 0.1),
+                0 0 20px rgba(255, 149, 0, 0.1);
+  }
+  to {
+    box-shadow: 0 0 20px rgba(255, 149, 0, 0.2),
+                0 0 40px rgba(255, 149, 0, 0.2);
+  }
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+@keyframes spin-reverse {
+  to { transform: rotate(-360deg); }
+}
+
+.animate-shimmer {
+  animation: shimmer 2s infinite;
+}
+
+.animate-spin-reverse {
+  animation: spin-reverse 3s linear infinite;
+}
+
 /* Mobile-specific styles */
 @media (max-width: 1024px) {
   .sidebar-closed {

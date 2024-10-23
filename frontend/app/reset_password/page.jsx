@@ -3,13 +3,16 @@
 import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import { Eye, EyeOff, Lock, KeyRound, Loader2, ArrowLeft } from 'lucide-react'
+import { Spinner } from "@nextui-org/react"
+import { Toaster, toast } from "sonner"
 
 export default function ResetPassword() {
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [success, setSuccess] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
   const searchParams = useSearchParams()
   const token = searchParams.get('token')
@@ -18,130 +21,167 @@ export default function ResetPassword() {
     if (!token) {
       router.push('/forgot-password')
     }
+    const timer = setTimeout(() => {
+      setIsLoading(false)
+    }, 1500)
+    return () => clearTimeout(timer)
   }, [token, router])
+
+  const LoadingOverlay = () => (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+      <div className="bg-black/20 p-8 rounded-2xl animate-pulse">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-16 h-16 relative">
+            <div className="absolute inset-0 rounded-full border-4 border-t-[#FF9500] border-r-transparent border-b-transparent border-l-transparent animate-spin"></div>
+            <div className="absolute inset-2 rounded-full border-4 border-t-transparent border-r-[#FF9500] border-b-transparent border-l-transparent animate-spin-reverse"></div>
+          </div>
+          <p className="text-white text-xl font-medium">Loading...</p>
+        </div>
+      </div>
+    </div>
+  )
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    setError('')
-    
+
     if (password !== confirmPassword) {
-      setError('Passwords do not match')
+      toast.error("Passwords do not match")
       return
     }
 
-    setLoading(true)
+    setIsLoading(true)
     try {
-      const res = await fetch('/api/reset-password', {
+      const res = await fetch('http://127.0.0.1:5000/api/reset-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token, password })
       })
-      
+
       if (res.ok) {
-        setSuccess(true)
+        toast.success("Password reset successful! Redirecting to login...")
         setTimeout(() => {
           router.push('/')
-        }, 3000)
+        }, 2000)
       } else {
         const data = await res.json()
-        setError(data.error || 'Failed to reset password')
+        throw new Error(data.error || 'Failed to reset password')
       }
     } catch (error) {
-      setError('An error occurred. Please try again.')
+      toast.error(error.message || 'An error occurred. Please try again.')
     } finally {
-      setLoading(false)
+      setIsLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="glass-effect p-8 rounded-2xl max-w-md w-full space-y-8 animate-glow">
+    <div className="min-h-screen bg-[#2A2A2A] flex items-center justify-center p-4">
+      <Toaster richColors position="top-center" />
+      {isLoading && <LoadingOverlay />}
+
+      <div className="glass-effect p-8 rounded-2xl max-w-md w-full space-y-8 animate-glow-mini">
         <div>
-          <h2 className="text-center text-3xl font-bold text-white">
-            Create New Password
-          </h2>
-          <div className="mt-2 text-center">
-            <div className="inline-block p-2 rounded-full bg-primary/20">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-              </svg>
+          <div className="flex justify-center mb-4">
+            <div className="w-16 h-16 bg-[#FF9500] rounded-full flex items-center justify-center relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-r from-[#FF9500]/0 via-white/20 to-[#FF9500]/0 animate-shimmer"></div>
+              <KeyRound className="w-8 h-8 text-white" />
             </div>
           </div>
+          <h2 className="text-center text-3xl font-bold text-white">
+            Reset Password
+          </h2>
+          <p className="mt-2 text-center text-gray-400">
+            Create a new secure password
+          </p>
         </div>
 
-        {success ? (
-          <div className="text-center">
-            <div className="mb-4 inline-block p-2 rounded-full bg-green-500/20">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-            </div>
-            <p className="text-lg text-white mb-4">
-              Password successfully reset!
-            </p>
-            <p className="text-gray-400">
-              Redirecting to login...
-            </p>
-          </div>
-        ) : (
-          <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-            {error && (
-              <div className="p-3 rounded-lg bg-red-500/20 text-red-300 text-sm">
-                {error}
-              </div>
-            )}
-            
-            <div className="space-y-4">
-              <div>
-                <label htmlFor="password" className="sr-only">
-                  New Password
-                </label>
+        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium text-white mb-1.5 block">
+                New Password
+              </label>
+              <div className="relative">
                 <input
-                  id="password"
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   required
-                  className="appearance-none rounded-lg relative block w-full px-3 py-2 border border-gray-700 bg-gray-900 placeholder-gray-500 text-white focus:outline-none focus:ring-primary focus:border-primary focus:z-10 sm:text-sm"
-                  placeholder="New password"
+                  className="w-full h-12 glass-effect rounded-xl px-4 pl-11 pr-11 text-white placeholder-gray-400 focus:ring-2 focus:ring-[#FF9500] focus:border-transparent bg-white/5"
+                  placeholder="Enter new password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  disabled={isLoading}
                   minLength={8}
                 />
-              </div>
-              
-              <div>
-                <label htmlFor="confirm-password" className="sr-only">
-                  Confirm Password
-                </label>
-                <input
-                  id="confirm-password"
-                  type="password"
-                  required
-                  className="appearance-none rounded-lg relative block w-full px-3 py-2 border border-gray-700 bg-gray-900 placeholder-gray-500 text-white focus:outline-none focus:ring-primary focus:border-primary focus:z-10 sm:text-sm"
-                  placeholder="Confirm password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  minLength={8}
-                />
+                <Lock className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
+                <button
+                  type="button"
+                  className="absolute right-3 top-3.5 text-gray-400 hover:text-white focus:outline-none"
+                  onClick={() => setShowPassword(!showPassword)}
+                  disabled={isLoading}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-5 w-5" />
+                  ) : (
+                    <Eye className="h-5 w-5" />
+                  )}
+                </button>
               </div>
             </div>
 
             <div>
-              <button
-                type="submit"
-                disabled={loading}
-                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
-              >
-                {loading ? 'Resetting...' : 'Reset Password'}
-              </button>
+              <label className="text-sm font-medium text-white mb-1.5 block">
+                Confirm Password
+              </label>
+              <div className="relative">
+                <input
+                  type={showConfirmPassword ? "text" : "password"}
+                  required
+                  className="w-full h-12 glass-effect rounded-xl px-4 pl-11 pr-11 text-white placeholder-gray-400 focus:ring-2 focus:ring-[#FF9500] focus:border-transparent bg-white/5"
+                  placeholder="Confirm new password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  disabled={isLoading}
+                  minLength={8}
+                />
+                <Lock className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
+                <button
+                  type="button"
+                  className="absolute right-3 top-3.5 text-gray-400 hover:text-white focus:outline-none"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  disabled={isLoading}
+                >
+                  {showConfirmPassword ? (
+                    <EyeOff className="h-5 w-5" />
+                  ) : (
+                    <Eye className="h-5 w-5" />
+                  )}
+                </button>
+              </div>
             </div>
+          </div>
 
-            <div className="text-center">
-              <Link href="/" className="text-primary hover:text-primary/80">
-                Back to login
-              </Link>
-            </div>
-          </form>
-        )}
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="w-full h-12 flex items-center justify-center space-x-2 bg-[#FF9500] hover:bg-[#FF9500]/90 text-white font-medium rounded-xl focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#FF9500] transition-colors duration-200 disabled:opacity-70"
+          >
+            {isLoading ? (
+              <>
+                <Spinner color="white" size="sm" />
+                <span className="ml-2">Resetting Password...</span>
+              </>
+            ) : (
+              <span>Reset Password</span>
+            )}
+          </button>
+
+          <Link
+            href="/"
+            className="w-full h-12 flex items-center justify-center space-x-2 bg-white/5 hover:bg-white/10 text-white font-medium rounded-xl focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#FF9500] transition-colors duration-200"
+          >
+            <ArrowLeft className="w-5 h-5" />
+            <span>Back to Login</span>
+          </Link>
+        </form>
       </div>
     </div>
   )

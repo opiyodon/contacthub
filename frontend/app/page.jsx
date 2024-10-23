@@ -1,86 +1,179 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { Eye, EyeOff, User, Lock, Mail, Loader2 } from 'lucide-react'
+import { Spinner, useDisclosure } from "@nextui-org/react"
+import { Toaster, toast } from "sonner"
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)  // Changed to true initially
   const router = useRouter()
+
+  // Add useEffect to handle initial loading
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false)
+    }, 1500) // Show loading for 1.5 seconds
+
+    return () => clearTimeout(timer)
+  }, [])
+
+  const LoadingOverlay = () => (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+      <div className="bg-black/20 p-8 rounded-2xl animate-pulse">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-16 h-16 relative">
+            <div className="absolute inset-0 rounded-full border-4 border-t-[#FF9500] border-r-transparent border-b-transparent border-l-transparent animate-spin"></div>
+            <div className="absolute inset-2 rounded-full border-4 border-t-transparent border-r-[#FF9500] border-b-transparent border-l-transparent animate-spin-reverse"></div>
+          </div>
+          <p className="text-white text-xl font-medium">Loading...</p>
+        </div>
+      </div>
+    </div>
+  )
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    setIsLoading(true)
+
     try {
-      const res = await fetch('/api/login', {
+      const res = await fetch('http://127.0.0.1:5000/api/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
       })
+
       if (res.ok) {
         const data = await res.json()
         localStorage.setItem('token', data.token)
-        router.push('/dashboard')
+
+        toast.success("Successfully logged in! Redirecting to Dashboard...")
+
+        setTimeout(() => {
+          router.push('/dashboard')
+        }, 1000)
+      } else {
+        throw new Error('Login failed')
       }
     } catch (error) {
       console.error('Login failed:', error)
+      toast.error("Invalid credentials. Please try again.")
+    } finally {
+      setIsLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="glass-effect p-8 rounded-2xl max-w-md w-full space-y-8 animate-glow">
+    <div className="min-h-screen bg-[#2A2A2A] flex items-center justify-center p-4">
+      <Toaster richColors position="top-center" />
+      {isLoading && <LoadingOverlay />}
+
+      <div className="glass-effect p-8 rounded-2xl max-w-md w-full space-y-8 animate-glow-mini">
         <div>
+          <div className="flex justify-center mb-4">
+            <div className="w-16 h-16 bg-[#FF9500] rounded-full flex items-center justify-center relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-r from-[#FF9500]/0 via-white/20 to-[#FF9500]/0 animate-shimmer"></div>
+              <User className="w-8 h-8 text-white" />
+            </div>
+          </div>
           <h2 className="text-center text-3xl font-bold text-white">
             ContactHub X50
           </h2>
-          <div className="mt-2 text-center">
-            <div className="inline-block p-2 rounded-full bg-primary/20">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4" />
-              </svg>
-            </div>
-          </div>
+          <p className="mt-2 text-center text-gray-400">
+            Sign in to manage your contacts
+          </p>
         </div>
+
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="rounded-md shadow-sm -space-y-px">
+          <div className="space-y-4">
             <div>
-              <input
-                type="email"
-                required
-                className="appearance-none rounded-t-md relative block w-full px-3 py-2 border border-gray-700 bg-gray-900 placeholder-gray-500 text-white focus:outline-none focus:ring-primary focus:border-primary focus:z-10 sm:text-sm"
-                placeholder="Email address"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
+              <label className="text-sm font-medium text-white mb-1.5 block">
+                Email Address
+              </label>
+              <div className="relative">
+                <input
+                  type="email"
+                  required
+                  className="w-full h-12 glass-effect rounded-xl px-4 pl-11 text-white placeholder-gray-400 focus:ring-2 focus:ring-[#FF9500] focus:border-transparent bg-white/5"
+                  placeholder="Enter your email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={isLoading}
+                />
+                <Mail className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
+              </div>
             </div>
+
             <div>
-              <input
-                type="password"
-                required
-                className="appearance-none rounded-b-md relative block w-full px-3 py-2 border border-gray-700 bg-gray-900 placeholder-gray-500 text-white focus:outline-none focus:ring-primary focus:border-primary focus:z-10 sm:text-sm"
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
+              <label className="text-sm font-medium text-white mb-1.5 block">
+                Password
+              </label>
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  required
+                  className="w-full h-12 glass-effect rounded-xl px-4 pl-11 pr-11 text-white placeholder-gray-400 focus:ring-2 focus:ring-[#FF9500] focus:border-transparent bg-white/5"
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={isLoading}
+                />
+                <Lock className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
+                <button
+                  type="button"
+                  className="absolute right-3 top-3.5 text-gray-400 hover:text-white focus:outline-none"
+                  onClick={() => setShowPassword(!showPassword)}
+                  disabled={isLoading}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-5 w-5" />
+                  ) : (
+                    <Eye className="h-5 w-5" />
+                  )}
+                </button>
+              </div>
             </div>
           </div>
 
           <div className="flex items-center justify-between">
-            <div className="text-sm">
-              <Link href="/forgot_password" className="font-medium text-primary hover:text-primary/80">
-                Forgot your password?
-              </Link>
-            </div>
+            <Link
+              href="/forgot_password"
+              className="text-sm font-medium text-[#FF9500] hover:text-[#FF9500]/80"
+            >
+              Forgot password?
+            </Link>
           </div>
 
-          <div>
-            <button
-              type="submit"
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
-            >
-              Sign in
-            </button>
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="w-full h-12 flex items-center justify-center space-x-2 bg-[#FF9500] hover:bg-[#FF9500]/90 text-white font-medium rounded-xl focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#FF9500] transition-colors duration-200 disabled:opacity-70"
+          >
+            {isLoading ? (
+              <>
+                <Spinner color="white" size="sm" />
+                <span className="ml-2">Signing in...</span>
+              </>
+            ) : (
+              <span>Sign in</span>
+            )}
+          </button>
+
+          <div className="text-center">
+            <p className="text-gray-400">
+              Don't have an account?{" "}
+              <Link
+                href="/register"
+                className="text-[#FF9500] hover:text-[#FF9500]/80 font-medium"
+              >
+                Sign up
+              </Link>
+            </p>
           </div>
         </form>
       </div>

@@ -10,11 +10,15 @@
   },
   "dependencies": {
     "@heroicons/react": "^2.1.5",
+    "@nextui-org/react": "^2.4.8",
     "autoprefixer": "^10.4.20",
+    "framer-motion": "^11.11.9",
     "lucide-react": "^0.453.0",
     "next": "15.0.0",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "react-toastify": "^10.0.6",
+    "sonner": "^1.5.0"
   },
   "devDependencies": {
     "eslint": "^8",

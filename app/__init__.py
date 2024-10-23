@@ -11,8 +11,17 @@ def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
     
-    # Initialize extensions
-    CORS(app)
+    # Initialize extensions with CORS configuration
+    CORS(app, resources={
+        r"/api/*": {
+            "origins": ["http://localhost:3000"],
+            "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+            "allow_headers": ["Content-Type", "Authorization", "Accept"]
+        }
+    })
+    
+    # Initialize MongoDB with the URI from config
+    app.config["MONGO_URI"] = Config.MONGO_URI
     mongo.init_app(app)
     mail.init_app(app)
     
