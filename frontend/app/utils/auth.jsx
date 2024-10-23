@@ -86,50 +86,68 @@ export function AuthProvider({ children }) {
     document.cookie = 'token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT'
     setUser(null)
     router.push('/')
-  }
+}
 
-  const logout = async () => {
+const logout = async () => {
     setLoading(true)
     try {
-      await fetch('http://127.0.0.1:5000/api/logout', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        const token = localStorage.getItem('token')
+        if (!token) {
+            handleLogout()
+            return
         }
-      })
+
+        const res = await fetch('http://127.0.0.1:5000/api/logout', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        })
+
+        if (!res.ok) {
+            throw new Error('Logout failed')
+        }
     } catch (error) {
-      console.error('Logout error:', error)
+        console.error('Logout error:', error)
+        toast.error('Logout failed')
     } finally {
-      handleLogout()
-      setLoading(false)
-    }
-  }
-
-  const deleteAccount = async (password) => {
-    try {
-      const res = await fetch('http://127.0.0.1:5000/api/delete-account', {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ password })
-      })
-
-      if (res.ok) {
-        toast.success('Account deleted successfully')
         handleLogout()
-        return true
-      } else {
-        toast.error('Failed to delete account. Please check your password.')
-        return false
-      }
-    } catch (error) {
-      console.error('Delete account error:', error)
-      toast.error('An error occurred while deleting account')
-      return false
+        setLoading(false)
     }
-  }
+}
+
+const deleteAccount = async (password) => {
+    try {
+        const token = localStorage.getItem('token')
+        if (!token) {
+            toast.error('Authentication required')
+            return false
+        }
+
+        const res = await fetch('http://127.0.0.1:5000/api/delete-account', {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ password })
+        })
+
+        if (res.ok) {
+            toast.success('Account deleted successfully')
+            handleLogout()
+            return true
+        } else {
+            const data = await res.json()
+            toast.error(data.error || 'Failed to delete account')
+            return false
+        }
+    } catch (error) {
+        console.error('Delete account error:', error)
+        toast.error('An error occurred while deleting account')
+        return false
+    }
+}
 
   return (
     <AuthContext.Provider value={{
