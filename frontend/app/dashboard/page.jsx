@@ -2,7 +2,9 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Search, User, Mail, Phone, MapPin, Hash, Plus, Settings, Bell, Menu, X } from 'lucide-react'
+import { Search, User, Mail, Phone, MapPin, Hash, Plus, Settings, Bell, Menu, X, LogOut, Trash2 } from 'lucide-react'
+import { toast, Toaster } from 'sonner'
+import { useAuth } from '../utils/auth'
 
 export default function Dashboard() {
     const [contactData, setContactData] = useState({
@@ -12,7 +14,71 @@ export default function Dashboard() {
         registration_number: ''
     })
     const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+    const [showDeleteModal, setShowDeleteModal] = useState(false)
+    const [password, setPassword] = useState('')
+    const [isLoading, setIsLoading] = useState(false)
     const router = useRouter()
+    const { logout } = useAuth()
+
+    const handleLogout = async () => {
+        setIsLoading(true)
+        await logout()
+        router.push('/')
+    }
+
+    const handleDeleteAccount = async () => {
+        try {
+            const res = await fetch('http://127.0.0.1:5000/api/delete-account', {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                },
+                body: JSON.stringify({ password })
+            })
+
+            if (res.ok) {
+                toast.success('Account deleted successfully')
+                handleLogout()
+            } else {
+                toast.error('Failed to delete account. Please check your password.')
+            }
+        } catch (error) {
+            toast.error('An error occurred while deleting account')
+        }
+    }
+
+    const DeleteAccountModal = () => (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+            <div className="glass-effect p-6 rounded-2xl max-w-md w-full space-y-6 animate-glow-mini">
+                <h2 className="text-2xl font-bold text-white">Delete Account</h2>
+                <p className="text-gray-400">
+                    This action cannot be undone. Please enter your password to confirm.
+                </p>
+                <input
+                    type="password"
+                    placeholder="Enter your password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full h-12 glass-effect rounded-xl px-4 text-white placeholder-gray-400 focus:ring-2 focus:ring-[#FF9500] focus:border-transparent bg-white/5"
+                />
+                <div className="flex space-x-4">
+                    <button
+                        onClick={() => setShowDeleteModal(false)}
+                        className="flex-1 h-12 glass-effect rounded-xl text-white hover:bg-white/10"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        onClick={handleDeleteAccount}
+                        className="flex-1 h-12 bg-red-500 hover:bg-red-600 text-white font-medium rounded-xl"
+                    >
+                        Delete Account
+                    </button>
+                </div>
+            </div>
+        </div>
+    )
 
     const handleSubmit = async (e) => {
         e.preventDefault()
@@ -40,6 +106,9 @@ export default function Dashboard() {
 
     return (
         <div className="min-h-screen bg-[#2A2A2A]">
+            <Toaster richColors position="top-center" />
+            {showDeleteModal && <DeleteAccountModal />}
+
             {/* Mobile Header */}
             <div className="lg:hidden fixed top-0 left-0 right-0 h-16 glass-effect z-50 flex items-center justify-between px-4">
                 <div className="flex items-center space-x-3">
@@ -71,8 +140,8 @@ export default function Dashboard() {
             {/* Left Sidebar */}
             <div
                 className={`fixed left-0 top-0 h-full glass-effect flex flex-col items-center py-8 space-y-8 transition-all duration-300 z-50
-        ${isSidebarOpen ? 'w-16 sidebar-open' : 'w-0 sidebar-closed'} 
-        lg:w-16 lg:translate-x-0`}
+                ${isSidebarOpen ? 'w-16 sidebar-open' : 'w-0 sidebar-closed'} 
+                lg:w-16 lg:translate-x-0`}
             >
                 <div className="hidden lg:flex w-10 h-10 bg-[#FF9500] rounded-full items-center justify-center">
                     <User className="w-6 h-6 text-white" />
@@ -83,6 +152,20 @@ export default function Dashboard() {
                     </button>
                     <button className="w-10 h-10 rounded-lg glass-effect flex items-center justify-center hover:bg-[#FF9500]/20">
                         <Settings className="w-5 h-5 text-white" />
+                    </button>
+                    <button
+                        onClick={() => setShowDeleteModal(true)}
+                        className="w-10 h-10 rounded-lg glass-effect flex items-center justify-center hover:bg-red-500/20"
+                        title="Delete Account"
+                    >
+                        <Trash2 className="w-5 h-5 text-red-500" />
+                    </button>
+                    <button
+                        onClick={handleLogout}
+                        className="w-10 h-10 rounded-lg glass-effect flex items-center justify-center hover:bg-[#FF9500]/20"
+                        title="Logout"
+                    >
+                        <LogOut className="w-5 h-5 text-white" />
                     </button>
                 </div>
             </div>

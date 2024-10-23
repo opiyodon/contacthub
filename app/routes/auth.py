@@ -375,13 +375,13 @@ def forgot_password():
         
         # Send email with HTML template
         msg = Message(
-            'Sign in to ContactHub X50',
+            'ContactHub X50 Password Reset Request',
             sender=Config.MAIL_USERNAME,
             recipients=[email]
         )
         msg.html = render_template_string(EMAIL_TEMPLATE, reset_link=reset_link)
         msg.body = f'''
-Sign in to ContactHub X50
+ContactHub X50 Password Reset Request
 
 All you have to do is click this link and we'll sign you in securely:
 {reset_link}
