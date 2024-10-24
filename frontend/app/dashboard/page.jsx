@@ -1,10 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Search, User, Mail, Phone, MapPin, Hash, Plus, Settings, Bell, Menu, X, LogOut, Trash2 } from 'lucide-react'
 import { toast, Toaster } from 'sonner'
 import { useAuth } from '../utils/auth'
+import { Link } from '@nextui-org/react'
 
 export default function Dashboard() {
     const [contactData, setContactData] = useState({
@@ -13,21 +14,54 @@ export default function Dashboard() {
         address: '',
         registration_number: ''
     })
+    const [stats, setStats] = useState({
+        total_contacts: 0,
+        recent_added: 0,
+        recent_activities: []
+    })
     const [isSidebarOpen, setIsSidebarOpen] = useState(false)
     const [showDeleteModal, setShowDeleteModal] = useState(false)
     const [password, setPassword] = useState('')
-    const [isLoading, setIsLoading] = useState(false)
+    const [isLoading, setIsLoading] = useState(true)  // Changed to true initially
     const router = useRouter()
     const { logout, deleteAccount } = useAuth()
+
+    // Add useEffect to handle initial loading
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setIsLoading(false)
+        }, 1500) // Show loading for 1.5 seconds
+
+        return () => clearTimeout(timer)
+    }, [])
+
+    const LoadingOverlay = () => (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+            <div className="bg-black/20 p-8 rounded-2xl animate-pulse">
+                <div className="flex flex-col items-center gap-4">
+                    <div className="w-16 h-16 relative">
+                        <div className="absolute inset-0 rounded-full border-4 border-t-[#FF9500] border-r-transparent border-b-transparent border-l-transparent animate-spin"></div>
+                        <div className="absolute inset-2 rounded-full border-4 border-t-transparent border-r-[#FF9500] border-b-transparent border-l-transparent animate-spin-reverse"></div>
+                    </div>
+                    <p className="text-white text-xl font-medium">Loading...</p>
+                </div>
+            </div>
+        </div>
+    )
 
     const handleLogout = async () => {
         setIsLoading(true)
         try {
             await logout()
-            router.push('/')
+
+            toast.success("Successfully logged out!")
+
+            setTimeout(() => {
+                router.push('/')
+            }, 1000)
         } catch (error) {
             console.error('Logout error:', error)
-            toast.error('Failed to logout')
+            toast.error('Failed to logout. Please try again.')
         } finally {
             setIsLoading(false)
         }
@@ -44,15 +78,24 @@ export default function Dashboard() {
             const success = await deleteAccount(password)
 
             if (success) {
+                toast.success("Account successfully deleted. Redirecting...")
                 setShowDeleteModal(false)
-                router.push('/')
+                setTimeout(() => {
+                    router.push('/')
+                }, 2500)
             }
         } catch (error) {
             console.error('Delete account error:', error)
-            toast.error('Failed to delete account')
+            toast.error('Failed to delete account. Please check your password and try again.')
         } finally {
             setIsLoading(false)
         }
+    }
+
+    const handleCancelDelete = () => {
+        setShowDeleteModal(false)
+        setPassword('')
+        toast.success("Phew! We're glad you're staying with us! 🎉")
     }
 
     const DeleteAccountModal = () => (
@@ -71,7 +114,7 @@ export default function Dashboard() {
                 />
                 <div className="flex space-x-4">
                     <button
-                        onClick={() => setShowDeleteModal(false)}
+                        onClick={handleCancelDelete}
                         className="flex-1 h-12 glass-effect rounded-xl text-white hover:bg-white/10"
                     >
                         Cancel
@@ -79,18 +122,44 @@ export default function Dashboard() {
                     <button
                         onClick={handleDeleteAccount}
                         className="flex-1 h-12 bg-red-500 hover:bg-red-600 text-white font-medium rounded-xl"
+                        disabled={isLoading}
                     >
-                        Delete Account
+                        {isLoading ? 'Deleting...' : 'Delete Account'}
                     </button>
                 </div>
             </div>
         </div>
     )
 
+    useEffect(() => {
+        fetchStats()
+        const statsInterval = setInterval(fetchStats, 60000) // Update every minute
+        return () => clearInterval(statsInterval)
+    }, [])
+
+    const fetchStats = async () => {
+        try {
+            const res = await fetch('http://127.0.0.1:5000/api/contacts/stats', {
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                }
+            })
+            if (res.ok) {
+                const data = await res.json()
+                setStats(data)
+            }
+        } catch (error) {
+            console.error('Failed to fetch stats:', error)
+        } finally {
+            setIsLoading(false)
+        }
+    }
+
     const handleSubmit = async (e) => {
         e.preventDefault()
+        setIsLoading(true)
         try {
-            const res = await fetch('/api/contacts', {
+            const res = await fetch('http://127.0.0.1:5000/api/contacts', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -99,21 +168,29 @@ export default function Dashboard() {
                 body: JSON.stringify(contactData)
             })
             if (res.ok) {
+                toast.success("Contact added successfully!")
                 setContactData({
                     mobile: '',
                     email: '',
                     address: '',
                     registration_number: ''
                 })
+                fetchStats() // Refresh stats after adding contact
+            } else {
+                throw new Error('Failed to create contact')
             }
         } catch (error) {
             console.error('Failed to create contact:', error)
+            toast.error('Failed to create contact. Please try again.')
+        } finally {
+            setIsLoading(false)
         }
     }
 
     return (
         <div className="min-h-screen bg-[#2A2A2A]">
             <Toaster richColors position="top-center" />
+            {isLoading && <LoadingOverlay />}
             {showDeleteModal && <DeleteAccountModal />}
 
             {/* Mobile Header */}
@@ -122,7 +199,9 @@ export default function Dashboard() {
                     <div className="w-8 h-8 bg-[#FF9500] rounded-full flex items-center justify-center">
                         <User className="w-5 h-5 text-white" />
                     </div>
-                    <h1 className="text-lg font-bold text-white">ContactHub X50</h1>
+                    <Link href="/dashboard">
+                        <h1 className="text-lg font-bold text-white">ContactHub X50</h1>
+                    </Link>
                 </div>
                 <button
                     className="p-2 glass-effect rounded-lg"
@@ -183,7 +262,9 @@ export default function Dashboard() {
                     {/* Top Section */}
                     <div className="flex items-center justify-between mb-8">
                         <div className="flex items-center space-x-4">
-                            <h1 className="text-2xl font-bold text-white hidden sm:block">ContactHub X50</h1>
+                            <Link href="/dashboard">
+                                <h1 className="text-2xl font-bold text-white hidden sm:block">ContactHub X50</h1>
+                            </Link>
                             <span className="text-gray-400">Manage your contacts efficiently</span>
                         </div>
                     </div>
@@ -196,25 +277,25 @@ export default function Dashboard() {
                                 <div className="grid grid-cols-2 gap-4 lg:block lg:space-y-6">
                                     <div className="glass-effect rounded-xl p-4">
                                         <h3 className="text-sm text-gray-400 mb-1">Total Contacts</h3>
-                                        <p className="text-2xl font-bold text-white">1,234</p>
+                                        <p className="text-2xl font-bold text-white">{stats.total_contacts}</p>
                                     </div>
                                     <div className="glass-effect rounded-xl p-4">
                                         <h3 className="text-sm text-gray-400 mb-1">Recent Added</h3>
-                                        <p className="text-2xl font-bold text-white">25</p>
+                                        <p className="text-2xl font-bold text-white">{stats.recent_added}</p>
                                     </div>
                                 </div>
 
                                 <div className="mt-6 hidden lg:block">
                                     <h2 className="text-lg font-semibold mb-4 text-white">Recent Activity</h2>
                                     <div className="space-y-4">
-                                        {[1, 2].map((_, i) => (
+                                        {stats.recent_activities.map((activity, i) => (
                                             <div key={i} className="flex items-center space-x-3 glass-effect rounded-xl p-3">
                                                 <div className="w-10 h-10 bg-[#FF9500]/20 rounded-lg flex items-center justify-center">
                                                     <User className="w-5 h-5 text-[#FF9500]" />
                                                 </div>
                                                 <div>
-                                                    <p className="font-medium text-white text-sm">New Contact Added</p>
-                                                    <p className="text-gray-400 text-xs">2 hours ago</p>
+                                                    <p className="font-medium text-white text-sm">{activity.details}</p>
+                                                    <p className="text-gray-400 text-xs">{activity.timestamp}</p>
                                                 </div>
                                             </div>
                                         ))}
@@ -326,24 +407,46 @@ function SearchContact() {
     const [searchReg, setSearchReg] = useState('')
     const [searchResult, setSearchResult] = useState(null)
     const [loading, setLoading] = useState(false)
+    const [error, setError] = useState(null)
 
     const handleSearch = async (e) => {
         e.preventDefault()
+        if (!searchReg.trim()) {
+            toast.error('Please enter a registration number')
+            return
+        }
+
         setLoading(true)
+        setError(null)
+        setSearchResult(null)
+
         try {
-            const res = await fetch(`/api/contacts/search?registration_number=${searchReg}`, {
+            const token = localStorage.getItem('token')
+            if (!token) {
+                throw new Error('No authentication token found')
+            }
+
+            const res = await fetch(`http://127.0.0.1:5000/api/contacts/search?registration_number=${encodeURIComponent(searchReg)}`, {
                 headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    'Authorization': `Bearer ${token}`,
+                    'Accept': 'application/json'
                 }
             })
+
+            if (!res.ok) {
+                const errorData = await res.json()
+                throw new Error(errorData.error || 'Failed to search contact')
+            }
+
             const data = await res.json()
-            if (res.ok) {
-                setSearchResult(data)
-            } else {
-                setSearchResult(null)
+            setSearchResult(data)
+            if (!data) {
+                toast.error('No contact found with this registration number')
             }
         } catch (error) {
             console.error('Search failed:', error)
+            setError(error.message)
+            toast.error(error.message)
         } finally {
             setLoading(false)
         }
@@ -369,12 +472,25 @@ function SearchContact() {
                     className="w-full h-12 bg-[#FF9500] hover:bg-[#FF9500]/90 text-white font-medium rounded-xl focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#FF9500] transition-colors duration-200"
                     disabled={loading}
                 >
-                    {loading ? 'Searching...' : 'Search'}
+                    {loading ? (
+                        <div className="flex items-center justify-center space-x-2">
+                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            <span>Searching...</span>
+                        </div>
+                    ) : (
+                        'Search'
+                    )}
                 </button>
             </form>
 
+            {error && (
+                <div className="p-4 rounded-xl glass-effect bg-red-500/10 text-red-400">
+                    {error}
+                </div>
+            )}
+
             {searchResult && (
-                <div className="mt-6 p-4 rounded-xl glass-effect bg-white/5">
+                <div className="mt-6 p-4 rounded-xl glass-effect bg-white/5 animate-fade-in">
                     <div className="space-y-4">
                         <div>
                             <p className="text-sm text-gray-400 mb-1">Mobile</p>
@@ -387,6 +503,10 @@ function SearchContact() {
                         <div>
                             <p className="text-sm text-gray-400 mb-1">Address</p>
                             <p className="font-medium text-white break-words">{searchResult.address}</p>
+                        </div>
+                        <div>
+                            <p className="text-sm text-gray-400 mb-1">Registration Number</p>
+                            <p className="font-medium text-white break-words">{searchResult.registration_number}</p>
                         </div>
                     </div>
                 </div>

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Eye, EyeOff, User, Lock, Mail, UserPlus, Phone, MapPin, Hash } from 'lucide-react'
+import { Eye, EyeOff, User, Lock, Mail, UserPlus } from 'lucide-react'
 import { Spinner } from "@nextui-org/react"
 import { Toaster, toast } from "sonner"
 
@@ -12,10 +12,7 @@ export default function RegisterPage() {
         name: '',
         email: '',
         password: '',
-        confirmPassword: '',
-        mobile: '',
-        address: '',
-        registrationNumber: ''
+        confirmPassword: ''
     })
     const [showPassword, setShowPassword] = useState(false)
     const [showConfirmPassword, setShowConfirmPassword] = useState(false)
@@ -71,10 +68,7 @@ export default function RegisterPage() {
                 body: JSON.stringify({
                     name: formData.name,
                     email: formData.email,
-                    password: formData.password,
-                    mobile: formData.mobile,
-                    address: formData.address,
-                    registration_number: formData.registrationNumber
+                    password: formData.password
                 })
             })
 
@@ -155,63 +149,6 @@ export default function RegisterPage() {
                                     disabled={isLoading}
                                 />
                                 <Mail className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
-                            </div>
-                        </div>
-
-                        <div>
-                            <label className="text-sm font-medium text-white mb-1.5 block">
-                                Mobile Phone
-                            </label>
-                            <div className="relative">
-                                <input
-                                    type="tel"
-                                    name="mobile"
-                                    required
-                                    className="w-full h-12 glass-effect rounded-xl px-4 pl-11 text-white placeholder-gray-400 focus:ring-2 focus:ring-[#FF9500] focus:border-transparent bg-white/5"
-                                    placeholder="Enter mobile number"
-                                    value={formData.mobile}
-                                    onChange={handleChange}
-                                    disabled={isLoading}
-                                />
-                                <Phone className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
-                            </div>
-                        </div>
-
-                        <div>
-                            <label className="text-sm font-medium text-white mb-1.5 block">
-                                Address
-                            </label>
-                            <div className="relative">
-                                <textarea
-                                    name="address"
-                                    required
-                                    className="w-full glass-effect rounded-xl px-4 py-3 pl-11 text-white placeholder-gray-400 focus:ring-2 focus:ring-[#FF9500] focus:border-transparent bg-white/5 resize-none"
-                                    placeholder="Enter address"
-                                    rows="3"
-                                    value={formData.address}
-                                    onChange={handleChange}
-                                    disabled={isLoading}
-                                />
-                                <MapPin className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
-                            </div>
-                        </div>
-
-                        <div>
-                            <label className="text-sm font-medium text-white mb-1.5 block">
-                                Registration Number
-                            </label>
-                            <div className="relative">
-                                <input
-                                    type="text"
-                                    name="registrationNumber"
-                                    required
-                                    className="w-full h-12 glass-effect rounded-xl px-4 pl-11 text-white placeholder-gray-400 focus:ring-2 focus:ring-[#FF9500] focus:border-transparent bg-white/5"
-                                    placeholder="Enter registration number"
-                                    value={formData.registrationNumber}
-                                    onChange={handleChange}
-                                    disabled={isLoading}
-                                />
-                                <Hash className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
                             </div>
                         </div>
 
