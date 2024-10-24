@@ -236,7 +236,7 @@ def register():
     try:
         data = request.get_json()
         
-        required_fields = ['name', 'email', 'password', 'mobile', 'address', 'registration_number']
+        required_fields = ['name', 'email', 'password']
         for field in required_fields:
             if not data.get(field):
                 return jsonify({'error': f'Missing required field: {field}'}), 400
@@ -250,9 +250,6 @@ def register():
             'name': data['name'],
             'email': data['email'],
             'password': generate_password_hash(data['password']),
-            'mobile': data['mobile'],
-            'address': data['address'],
-            'registration_number': data['registration_number'],
             'created_at': datetime.utcnow()
         }
         
@@ -494,10 +491,10 @@ def delete_account():
         try:
             # Verify token
             payload = jwt.decode(token, Config.JWT_SECRET_KEY, algorithms=['HS256'])
-            user_id = payload['user_id']
+            user_id = ObjectId(payload['user_id'])
             
             # Find user
-            user = mongo.db.users.find_one({'_id': ObjectId(user_id)})
+            user = mongo.db.users.find_one({'_id': user_id})
             if not user:
                 return jsonify({'error': 'User not found'}), 404
                 
@@ -505,13 +502,43 @@ def delete_account():
             if not check_password_hash(user['password'], password):
                 return jsonify({'error': 'Invalid password'}), 401
             
-            # Delete all user's contacts
-            mongo.db.contacts.delete_many({'user_id': ObjectId(user_id)})
+            # Create a deletion activity log before deleting activities
+            deletion_activity = {
+                'user_id': user_id,
+                'type': 'account_deletion',
+                'details': f"Account deletion initiated for user {user['email']}",
+                'timestamp': datetime.utcnow()
+            }
+            mongo.db.activities.insert_one(deletion_activity)
             
-            # Delete user account
-            mongo.db.users.delete_one({'_id': ObjectId(user_id)})
+            # Delete all user data in the following order:
             
-            return jsonify({'message': 'Account deleted successfully'}), 200
+            # 1. Delete all user's contacts
+            contacts_result = mongo.db.contacts.delete_many({'user_id': user_id})
+            
+            # 2. Delete all user's activity logs
+            activities_result = mongo.db.activities.delete_many({'user_id': user_id})
+            
+            # 3. Delete any reset tokens or other user-related documents
+            # Add more collections here if needed for future features
+            
+            # 4. Finally, delete the user account itself
+            user_result = mongo.db.users.delete_one({'_id': user_id})
+            
+            # Prepare deletion statistics
+            deletion_stats = {
+                'contacts_deleted': contacts_result.deleted_count,
+                'activities_deleted': activities_result.deleted_count,
+                'account_deleted': user_result.deleted_count == 1
+            }
+            
+            # Log the deletion for audit purposes (optional)
+            print(f"Account deletion completed: {deletion_stats}")
+            
+            return jsonify({
+                'message': 'Account and all associated data deleted successfully',
+                'deletion_stats': deletion_stats
+            }), 200
             
         except jwt.ExpiredSignatureError:
             return jsonify({'error': 'Token has expired'}), 401
