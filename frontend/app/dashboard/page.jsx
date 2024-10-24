@@ -2,10 +2,11 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { Search, User, Mail, Phone, MapPin, Hash, Plus, Settings, Bell, Menu, X, LogOut, Trash2 } from 'lucide-react'
+import { Search, User, Mail, Phone, MapPin, Hash, Plus, Settings, Bell, Menu, X, LogOut, Trash2, Clock } from 'lucide-react'
 import { toast, Toaster } from 'sonner'
 import { useAuth } from '../utils/auth'
 import { Link } from '@nextui-org/react'
+import moment from 'moment'
 
 export default function Dashboard() {
     const [contactData, setContactData] = useState({
@@ -24,9 +25,113 @@ export default function Dashboard() {
     const [showNotificationsModal, setShowNotificationsModal] = useState(false)
     const [showDeleteModal, setShowDeleteModal] = useState(false)
     const [password, setPassword] = useState('')
-    const [isLoading, setIsLoading] = useState(true)  // Changed to true initially
+    const [isLoading, setIsLoading] = useState(true)
     const router = useRouter()
     const { logout, deleteAccount } = useAuth()
+
+    // Activity type colors
+    const activityColors = {
+        added: {
+            bg: 'bg-green-500/20',
+            text: 'text-green-400',
+            icon: <Plus className="w-6 h-6" />
+        },
+        searched: {
+            bg: 'bg-yellow-500/20',
+            text: 'text-yellow-400',
+            icon: <Search className="w-6 h-6" />
+        }
+    }
+
+    const formatTimestamp = (timestamp, type) => {
+        // Parse the ISO timestamp and convert to local timezone
+        const momentDate = moment(timestamp).local()
+        const now = moment()
+        const diffMilliseconds = now.diff(momentDate, 'milliseconds')
+        const diffSeconds = now.diff(momentDate, 'seconds')
+        const diffMinutes = now.diff(momentDate, 'minutes')
+        const diffHours = now.diff(momentDate, 'hours')
+        const diffDays = now.diff(momentDate, 'days')
+        const diffWeeks = now.diff(momentDate, 'weeks')
+        const diffMonths = now.diff(momentDate, 'months')
+        const diffYears = now.diff(momentDate, 'years')
+        const action = type.toLowerCase()
+        
+        // Just now (less than a second ago)
+        if (diffMilliseconds < 1000) {
+            return `${action} just now`
+        }
+        
+        // Seconds ago (less than a minute)
+        if (diffSeconds < 60) {
+            return `${action} ${diffSeconds} ${diffSeconds === 1 ? 'second' : 'seconds'} ago`
+        }
+        
+        // Minutes ago (less than an hour)
+        if (diffMinutes < 60) {
+            return `${action} ${diffMinutes} ${diffMinutes === 1 ? 'minute' : 'minutes'} ago`
+        }
+        
+        // Hours ago (less than a day)
+        if (diffHours < 24) {
+            return `${action} ${diffHours} ${diffHours === 1 ? 'hour' : 'hours'} ago`
+        }
+        
+        // Days ago (less than a week)
+        if (diffDays < 7) {
+            if (diffDays === 1) {
+                return `${action} yesterday at ${momentDate.format('h:mm A')}`
+            }
+            return `${action} ${diffDays} days ago at ${momentDate.format('h:mm A')}`
+        }
+        
+        // Weeks ago (less than a month)
+        if (diffWeeks < 4) {
+            return `${action} ${diffWeeks} ${diffWeeks === 1 ? 'week' : 'weeks'} ago at ${momentDate.format('h:mm A')}`
+        }
+        
+        // Months ago (less than a year)
+        if (diffMonths < 12) {
+            return `${action} ${diffMonths} ${diffMonths === 1 ? 'month' : 'months'} ago on ${momentDate.format('MMM D [at] h:mm A')}`
+        }
+        
+        // Years ago
+        if (diffYears >= 1) {
+            return `${action} ${diffYears} ${diffYears === 1 ? 'year' : 'years'} ago on ${momentDate.format('MMM D, YYYY [at] h:mm A')}`
+        }
+        
+        // Fallback for any edge cases
+        return `${action} on ${momentDate.format('MMM D, YYYY [at] h:mm A')}`
+    }
+    
+    const RecentActivity = ({ activity }) => {
+        const activityType = activity.type.toLowerCase()
+        const { bg, text, icon } = activityColors[activityType]
+        
+        return (
+            <div className={`glass-effect rounded-xl p-4 transition-all duration-200 hover:bg-white/5 ${bg}`}>
+                <div className="flex items-start space-x-2">
+                    <div className={`flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center ${bg}`}>
+                        <span className={text}>{icon}</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                            <span className={`font-medium ${text} capitalize`}>
+                                {activityType}
+                            </span>
+                        </div>
+                        <p className="text-white text-sm mt-1 break-words">
+                            <span className="text-[#FF9500]">{activity.contact.registration_number}</span>
+                        </p>
+                        <div className="flex items-center space-x-2 mt-2 text-gray-400 text-xs">
+                            <Clock className="w-4 h-4" />
+                            <span>{formatTimestamp(activity.timestamp, activity.type)}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )
+    }
 
     // Handle click outside sidebar
     const handleClickOutside = useCallback((event) => {
@@ -34,10 +139,10 @@ export default function Dashboard() {
         const menuButton = document.getElementById('menu-button')
 
         // If sidebar is open and click is outside sidebar and menu button
-        if (isSidebarOpen && 
-            sidebar && 
-            !sidebar.contains(event.target) && 
-            menuButton && 
+        if (isSidebarOpen &&
+            sidebar &&
+            !sidebar.contains(event.target) &&
+            menuButton &&
             !menuButton.contains(event.target)) {
             setIsSidebarOpen(false)
         }
@@ -149,7 +254,7 @@ export default function Dashboard() {
             </div>
         )
     );
-    
+
     const DeleteAccountModal = () => (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
             <div className="glass-effect p-4 sm:p-6 rounded-2xl w-full max-w-[calc(100vw-2rem)] sm:max-w-md space-y-4 sm:space-y-6 animate-glow-mini">
@@ -228,8 +333,6 @@ export default function Dashboard() {
                     registration_number: ''
                 })
                 fetchStats() // Refresh stats after adding contact
-            } else {
-                throw new Error('Failed to create contact')
             }
         } catch (error) {
             console.error('Failed to create contact:', error)
@@ -244,15 +347,15 @@ export default function Dashboard() {
             <Toaster richColors position="top-center" />
             {isLoading && <LoadingOverlay />}
             {showDeleteModal && <DeleteAccountModal />}
-            <MaintenanceModal 
-                isOpen={showSettingsModal} 
-                onClose={() => setShowSettingsModal(false)} 
-                title="Settings" 
+            <MaintenanceModal
+                isOpen={showSettingsModal}
+                onClose={() => setShowSettingsModal(false)}
+                title="Settings"
             />
-            <MaintenanceModal 
-                isOpen={showNotificationsModal} 
-                onClose={() => setShowNotificationsModal(false)} 
-                title="Notifications" 
+            <MaintenanceModal
+                isOpen={showNotificationsModal}
+                onClose={() => setShowNotificationsModal(false)}
+                title="Notifications"
             />
 
             {/* Mobile Header */}
@@ -301,7 +404,7 @@ export default function Dashboard() {
                     <User className="w-6 h-6 text-white" />
                 </div>
                 <div className="space-y-4">
-                    <button 
+                    <button
                         onClick={(e) => {
                             e.stopPropagation()
                             setShowNotificationsModal(true)
@@ -311,7 +414,7 @@ export default function Dashboard() {
                     >
                         <Bell className="w-5 h-5 text-white" />
                     </button>
-                    <button 
+                    <button
                         onClick={(e) => {
                             e.stopPropagation()
                             setShowSettingsModal(true)
@@ -374,31 +477,14 @@ export default function Dashboard() {
                                 </div>
 
                                 {/* Updated Recent Activity Section */}
-                        <div className="mt-6 hidden lg:block">
-                            <h2 className="text-lg font-semibold mb-4 text-white">Recent Activity</h2>
-                            <div className="space-y-4">
-                                {stats.recent_activities.map((activity, i) => (
-                                    <div 
-                                        key={i} 
-                                        className="glass-effect rounded-xl p-4 transition-all duration-200 hover:bg-white/5"
-                                    >
-                                        <div className="flex items-start space-x-4">
-                                            <div className="flex-shrink-0 w-12 h-12 bg-[#FF9500]/20 rounded-xl flex items-center justify-center">
-                                                <User className="w-6 h-6 text-[#FF9500]" />
-                                            </div>
-                                            <div className="flex-1 min-w-0"> {/* Added min-w-0 to prevent flex item from overflowing */}
-                                                <p className="text-white text-sm font-medium leading-5 break-words">
-                                                    {activity.details}
-                                                </p>
-                                                <p className="text-gray-400 text-xs mt-1">
-                                                    {activity.timestamp}
-                                                </p>
-                                            </div>
-                                        </div>
+                                <div className="mt-6 block">
+                                    <h2 className="text-lg font-semibold mb-4 text-white">Recent Activity</h2>
+                                    <div className="space-y-4">
+                                        {stats.recent_activities.map((activity, i) => (
+                                            <RecentActivity key={i} activity={activity} />
+                                        ))}
                                     </div>
-                                ))}
-                            </div>
-                        </div>
+                                </div>
                             </div>
                         </div>
 
@@ -499,6 +585,50 @@ function SearchContact() {
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState(null)
 
+    // Updated Search Results Component
+    const SearchResults = ({ result }) => (
+        <div className="mt-6 glass-effect rounded-xl p-6 bg-white/5 animate-fade-in">
+            <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-white">Contact Details</h3>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                    <div className="glass-effect rounded-lg p-4">
+                        <div className="flex items-center space-x-3 mb-2">
+                            <Phone className="w-5 h-5 text-[#FF9500]" />
+                            <p className="text-sm text-gray-400">Mobile</p>
+                        </div>
+                        <p className="font-medium text-white break-words">{result.mobile}</p>
+                    </div>
+                    <div className="glass-effect rounded-lg p-4">
+                        <div className="flex items-center space-x-3 mb-2">
+                            <Mail className="w-5 h-5 text-[#FF9500]" />
+                            <p className="text-sm text-gray-400">Email</p>
+                        </div>
+                        <p className="font-medium text-white break-words">{result.email}</p>
+                    </div>
+                </div>
+                <div className="space-y-4">
+                    <div className="glass-effect rounded-lg p-4">
+                        <div className="flex items-center space-x-3 mb-2">
+                            <MapPin className="w-5 h-5 text-[#FF9500]" />
+                            <p className="text-sm text-gray-400">Address</p>
+                        </div>
+                        <p className="font-medium text-white break-words">{result.address}</p>
+                    </div>
+                    <div className="glass-effect rounded-lg p-4">
+                        <div className="flex items-center space-x-3 mb-2">
+                            <Hash className="w-5 h-5 text-[#FF9500]" />
+                            <p className="text-sm text-gray-400">Registration Number</p>
+                        </div>
+                        <p className="font-medium text-white break-words">{result.registration_number}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    )
+
+
     const handleSearch = async (e) => {
         e.preventDefault()
         if (!searchReg.trim()) {
@@ -513,7 +643,7 @@ function SearchContact() {
         try {
             const token = localStorage.getItem('token')
             if (!token) {
-                throw new Error('No authentication token found')
+                toast.error('No authentication token found')
             }
 
             const res = await fetch(`http://127.0.0.1:5000/api/contacts/search?registration_number=${encodeURIComponent(searchReg)}`, {
@@ -525,7 +655,7 @@ function SearchContact() {
 
             if (!res.ok) {
                 const errorData = await res.json()
-                throw new Error(errorData.error || 'Failed to search contact')
+                toast.error(errorData.error || 'Failed to search contact')
             }
 
             const data = await res.json()
@@ -579,28 +709,7 @@ function SearchContact() {
                 </div>
             )}
 
-            {searchResult && (
-                <div className="mt-6 p-4 rounded-xl glass-effect bg-white/5 animate-fade-in">
-                    <div className="space-y-4">
-                        <div>
-                            <p className="text-sm text-gray-400 mb-1">Mobile</p>
-                            <p className="font-medium text-white break-words">{searchResult.mobile}</p>
-                        </div>
-                        <div>
-                            <p className="text-sm text-gray-400 mb-1">Email</p>
-                            <p className="font-medium text-white break-words">{searchResult.email}</p>
-                        </div>
-                        <div>
-                            <p className="text-sm text-gray-400 mb-1">Address</p>
-                            <p className="font-medium text-white break-words">{searchResult.address}</p>
-                        </div>
-                        <div>
-                            <p className="text-sm text-gray-400 mb-1">Registration Number</p>
-                            <p className="font-medium text-white break-words">{searchResult.registration_number}</p>
-                        </div>
-                    </div>
-                </div>
-            )}
+            {searchResult && <SearchResults result={searchResult} />}
         </div>
     )
 }
