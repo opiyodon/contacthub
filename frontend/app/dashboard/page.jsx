@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Search, User, Mail, Phone, MapPin, Hash, Plus, Settings, Bell, Menu, X, LogOut, Trash2 } from 'lucide-react'
 import { toast, Toaster } from 'sonner'
@@ -20,11 +20,39 @@ export default function Dashboard() {
         recent_activities: []
     })
     const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+    const [showSettingsModal, setShowSettingsModal] = useState(false)
+    const [showNotificationsModal, setShowNotificationsModal] = useState(false)
     const [showDeleteModal, setShowDeleteModal] = useState(false)
     const [password, setPassword] = useState('')
     const [isLoading, setIsLoading] = useState(true)  // Changed to true initially
     const router = useRouter()
     const { logout, deleteAccount } = useAuth()
+
+    // Handle click outside sidebar
+    const handleClickOutside = useCallback((event) => {
+        const sidebar = document.getElementById('mobile-sidebar')
+        const menuButton = document.getElementById('menu-button')
+
+        // If sidebar is open and click is outside sidebar and menu button
+        if (isSidebarOpen && 
+            sidebar && 
+            !sidebar.contains(event.target) && 
+            menuButton && 
+            !menuButton.contains(event.target)) {
+            setIsSidebarOpen(false)
+        }
+    }, [isSidebarOpen])
+
+    // Add event listener for clicks
+    useEffect(() => {
+        document.addEventListener('mousedown', handleClickOutside)
+        document.addEventListener('touchstart', handleClickOutside)
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside)
+            document.removeEventListener('touchstart', handleClickOutside)
+        }
+    }, [handleClickOutside])
 
     // Add useEffect to handle initial loading
     useEffect(() => {
@@ -98,11 +126,35 @@ export default function Dashboard() {
         toast.success("Phew! We're glad you're staying with us! 🎉")
     }
 
+    const MaintenanceModal = ({ isOpen, onClose, title }) => (
+        isOpen && (
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                <div className="glass-effect p-4 sm:p-6 rounded-2xl w-full max-w-[calc(100vw-2rem)] sm:max-w-md space-y-4 sm:space-y-6 animate-glow-mini">
+                    <h2 className="text-xl sm:text-2xl font-bold text-white">{title}</h2>
+                    <div className="space-y-3 sm:space-y-4">
+                        <p className="text-sm sm:text-base text-gray-400">
+                            This module is currently under maintenance and will be available soon. Sorry for the inconvenience.
+                        </p>
+                        <p className="text-sm sm:text-base text-gray-400">
+                            Please continue using other modules while we work on improving this feature.
+                        </p>
+                    </div>
+                    <button
+                        onClick={onClose}
+                        className="w-full h-10 sm:h-12 glass-effect rounded-xl text-white hover:bg-white/10 font-medium text-sm sm:text-base transition-colors"
+                    >
+                        Continue
+                    </button>
+                </div>
+            </div>
+        )
+    );
+    
     const DeleteAccountModal = () => (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-            <div className="glass-effect p-6 rounded-2xl max-w-md w-full space-y-6 animate-glow-mini">
-                <h2 className="text-2xl font-bold text-white">Delete Account</h2>
-                <p className="text-gray-400">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="glass-effect p-4 sm:p-6 rounded-2xl w-full max-w-[calc(100vw-2rem)] sm:max-w-md space-y-4 sm:space-y-6 animate-glow-mini">
+                <h2 className="text-xl sm:text-2xl font-bold text-white">Delete Account</h2>
+                <p className="text-sm sm:text-base text-gray-400">
                     This action cannot be undone. Please enter your password to confirm.
                 </p>
                 <input
@@ -110,18 +162,18 @@ export default function Dashboard() {
                     placeholder="Enter your password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full h-12 glass-effect rounded-xl px-4 text-white placeholder-gray-400 focus:ring-2 focus:ring-[#FF9500] focus:border-transparent bg-white/5"
+                    className="w-full h-10 sm:h-12 glass-effect rounded-xl px-4 text-sm sm:text-base text-white placeholder-gray-400 focus:ring-2 focus:ring-[#FF9500] focus:border-transparent bg-white/5"
                 />
-                <div className="flex space-x-4">
+                <div className="flex flex-col sm:flex-row gap-3 sm:space-x-4">
                     <button
                         onClick={handleCancelDelete}
-                        className="flex-1 h-12 glass-effect rounded-xl text-white hover:bg-white/10"
+                        className="w-full h-10 sm:h-12 glass-effect rounded-xl text-white hover:bg-white/10 text-sm sm:text-base transition-colors"
                     >
                         Cancel
                     </button>
                     <button
                         onClick={handleDeleteAccount}
-                        className="flex-1 h-12 bg-red-500 hover:bg-red-600 text-white font-medium rounded-xl"
+                        className="w-full h-10 sm:h-12 bg-red-500 hover:bg-red-600 text-white font-medium rounded-xl text-sm sm:text-base transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         disabled={isLoading}
                     >
                         {isLoading ? 'Deleting...' : 'Delete Account'}
@@ -129,7 +181,7 @@ export default function Dashboard() {
                 </div>
             </div>
         </div>
-    )
+    );
 
     useEffect(() => {
         fetchStats()
@@ -192,6 +244,16 @@ export default function Dashboard() {
             <Toaster richColors position="top-center" />
             {isLoading && <LoadingOverlay />}
             {showDeleteModal && <DeleteAccountModal />}
+            <MaintenanceModal 
+                isOpen={showSettingsModal} 
+                onClose={() => setShowSettingsModal(false)} 
+                title="Settings" 
+            />
+            <MaintenanceModal 
+                isOpen={showNotificationsModal} 
+                onClose={() => setShowNotificationsModal(false)} 
+                title="Notifications" 
+            />
 
             {/* Mobile Header */}
             <div className="lg:hidden fixed top-0 left-0 right-0 h-16 glass-effect z-50 flex items-center justify-between px-4">
@@ -204,8 +266,12 @@ export default function Dashboard() {
                     </Link>
                 </div>
                 <button
+                    id="menu-button"
                     className="p-2 glass-effect rounded-lg"
-                    onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                    onClick={(e) => {
+                        e.stopPropagation() // Prevent event from bubbling
+                        setIsSidebarOpen(!isSidebarOpen)
+                    }}
                 >
                     {isSidebarOpen ? (
                         <X className="w-6 h-6 text-white" />
@@ -225,29 +291,51 @@ export default function Dashboard() {
 
             {/* Left Sidebar */}
             <div
+                id="mobile-sidebar"
                 className={`fixed left-0 top-0 h-full glass-effect flex flex-col items-center py-8 space-y-8 transition-all duration-300 z-50
                 ${isSidebarOpen ? 'w-16 sidebar-open' : 'w-0 sidebar-closed'} 
                 lg:w-16 lg:translate-x-0`}
             >
+                {/* Rest of your sidebar content remains the same */}
                 <div className="hidden lg:flex w-10 h-10 bg-[#FF9500] rounded-full items-center justify-center">
                     <User className="w-6 h-6 text-white" />
                 </div>
                 <div className="space-y-4">
-                    <button className="w-10 h-10 rounded-lg glass-effect flex items-center justify-center hover:bg-[#FF9500]/20">
+                    <button 
+                        onClick={(e) => {
+                            e.stopPropagation()
+                            setShowNotificationsModal(true)
+                        }}
+                        className="w-10 h-10 rounded-lg glass-effect flex items-center justify-center hover:bg-[#FF9500]/20"
+                        title="Notifications"
+                    >
                         <Bell className="w-5 h-5 text-white" />
                     </button>
-                    <button className="w-10 h-10 rounded-lg glass-effect flex items-center justify-center hover:bg-[#FF9500]/20">
+                    <button 
+                        onClick={(e) => {
+                            e.stopPropagation()
+                            setShowSettingsModal(true)
+                        }}
+                        className="w-10 h-10 rounded-lg glass-effect flex items-center justify-center hover:bg-[#FF9500]/20"
+                        title="Settings"
+                    >
                         <Settings className="w-5 h-5 text-white" />
                     </button>
                     <button
-                        onClick={() => setShowDeleteModal(true)}
+                        onClick={(e) => {
+                            e.stopPropagation()
+                            setShowDeleteModal(true)
+                        }}
                         className="w-10 h-10 rounded-lg glass-effect flex items-center justify-center hover:bg-red-500/20"
                         title="Delete Account"
                     >
                         <Trash2 className="w-5 h-5 text-red-500" />
                     </button>
                     <button
-                        onClick={handleLogout}
+                        onClick={(e) => {
+                            e.stopPropagation()
+                            handleLogout()
+                        }}
                         className="w-10 h-10 rounded-lg glass-effect flex items-center justify-center hover:bg-[#FF9500]/20"
                         title="Logout"
                     >
@@ -285,22 +373,32 @@ export default function Dashboard() {
                                     </div>
                                 </div>
 
-                                <div className="mt-6 hidden lg:block">
-                                    <h2 className="text-lg font-semibold mb-4 text-white">Recent Activity</h2>
-                                    <div className="space-y-4">
-                                        {stats.recent_activities.map((activity, i) => (
-                                            <div key={i} className="flex items-center space-x-3 glass-effect rounded-xl p-3">
-                                                <div className="w-10 h-10 bg-[#FF9500]/20 rounded-lg flex items-center justify-center">
-                                                    <User className="w-5 h-5 text-[#FF9500]" />
-                                                </div>
-                                                <div>
-                                                    <p className="font-medium text-white text-sm">{activity.details}</p>
-                                                    <p className="text-gray-400 text-xs">{activity.timestamp}</p>
-                                                </div>
+                                {/* Updated Recent Activity Section */}
+                        <div className="mt-6 hidden lg:block">
+                            <h2 className="text-lg font-semibold mb-4 text-white">Recent Activity</h2>
+                            <div className="space-y-4">
+                                {stats.recent_activities.map((activity, i) => (
+                                    <div 
+                                        key={i} 
+                                        className="glass-effect rounded-xl p-4 transition-all duration-200 hover:bg-white/5"
+                                    >
+                                        <div className="flex items-start space-x-4">
+                                            <div className="flex-shrink-0 w-12 h-12 bg-[#FF9500]/20 rounded-xl flex items-center justify-center">
+                                                <User className="w-6 h-6 text-[#FF9500]" />
                                             </div>
-                                        ))}
+                                            <div className="flex-1 min-w-0"> {/* Added min-w-0 to prevent flex item from overflowing */}
+                                                <p className="text-white text-sm font-medium leading-5 break-words">
+                                                    {activity.details}
+                                                </p>
+                                                <p className="text-gray-400 text-xs mt-1">
+                                                    {activity.timestamp}
+                                                </p>
+                                            </div>
+                                        </div>
                                     </div>
-                                </div>
+                                ))}
+                            </div>
+                        </div>
                             </div>
                         </div>
 
@@ -308,16 +406,8 @@ export default function Dashboard() {
                         <div className="lg:col-span-9">
                             <div className="glass-effect rounded-2xl p-4 animate-glow-mini">
                                 {/* Categories - Mobile Optimized */}
-                                <div className="flex gap-2 mb-6 overflow-x-auto pb-2 lg:pb-0">
-                                    <button className="px-4 py-2 rounded-full bg-[#FF9500] text-white text-sm whitespace-nowrap">
-                                        All Categories
-                                    </button>
-                                    <button className="px-4 py-2 rounded-full glass-effect text-white hover:bg-[#FF9500]/20 text-sm whitespace-nowrap">
-                                        Recent
-                                    </button>
-                                    <button className="px-4 py-2 rounded-full glass-effect text-white hover:bg-[#FF9500]/20 text-sm whitespace-nowrap">
-                                        Popular
-                                    </button>
+                                <div className="flex justify-center w-fit px-8 py-2 mb-5 rounded-full bg-[#FF9500] text-white text-sm whitespace-nowrap">
+                                    Create New Conatact
                                 </div>
 
                                 {/* Form - Mobile Optimized */}
