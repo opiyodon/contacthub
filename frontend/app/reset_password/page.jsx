@@ -19,7 +19,7 @@ export default function ResetPassword() {
 
   useEffect(() => {
     if (!token) {
-      router.push('/')
+      router.push('/forgot_password')
     }
     const timer = setTimeout(() => {
       setIsLoading(false)
