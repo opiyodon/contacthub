@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useState, useEffect } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 
@@ -11,12 +11,14 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
   const router = useRouter()
 
-  // Check authentication status on mount
-  useEffect(() => {
-    checkAuth()
-  }, [checkAuth])
+  const handleLogout = useCallback(() => {
+    localStorage.removeItem('token')
+    document.cookie = 'token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT'
+    setUser(null)
+    router.push('/')
+  }, [router])
 
-  const checkAuth = async () => {
+  const checkAuth = useCallback(async () => {
     const token = localStorage.getItem('token')
     if (!token) {
       setLoading(false)
@@ -25,7 +27,7 @@ export function AuthProvider({ children }) {
     }
 
     try {
-      const res = await fetch('http://127.0.0.1:5000/api/verify-token', {
+      const res = await fetch('https://contacthub.up.railway.app/api/verify-token', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Accept': 'application/json'
@@ -35,7 +37,6 @@ export function AuthProvider({ children }) {
       if (res.ok) {
         const data = await res.json()
         setUser(data.user)
-        // Set token in cookies for middleware
         document.cookie = `token=${token}; path=/`
         
         if (window.location.pathname === '/') {
@@ -50,11 +51,15 @@ export function AuthProvider({ children }) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [router, handleLogout])
+
+  useEffect(() => {
+    checkAuth()
+  }, [checkAuth])
 
   const login = async (credentials) => {
     try {
-      const res = await fetch('http://127.0.0.1:5000/api/login', {
+      const res = await fetch('https://contacthub.up.railway.app/api/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -67,7 +72,6 @@ export function AuthProvider({ children }) {
       if (res.ok) {
         const token = data.token
         localStorage.setItem('token', token)
-        // Set token in cookies for middleware
         document.cookie = `token=${token}; path=/`
         setUser(data.user)
         return { success: true }
@@ -80,74 +84,66 @@ export function AuthProvider({ children }) {
     }
   }
 
-  const handleLogout = () => {
-    localStorage.removeItem('token')
-    // Remove token from cookies
-    document.cookie = 'token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT'
-    setUser(null)
-    router.push('/')
-}
-
-const logout = async () => {
+  const logout = async () => {
     setLoading(true)
     try {
-        const token = localStorage.getItem('token')
-        if (!token) {
-            handleLogout()
-            return
-        }
-
-        const res = await fetch('http://127.0.0.1:5000/api/logout', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        })
-
-        if (!res.ok) {
-            throw new Error('Logout failed')
-        }
-    } catch (error) {
-        console.error('Logout error:', error)
-        toast.error('Logout failed')
-    } finally {
+      const token = localStorage.getItem('token')
+      if (!token) {
         handleLogout()
-        setLoading(false)
-    }
-}
+        return
+      }
 
-const deleteAccount = async (password) => {
-    try {
-        const token = localStorage.getItem('token')
-        if (!token) {
-            toast.error('Authentication required')
-            return false
+      const res = await fetch('https://contacthub.up.railway.app/api/logout', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
         }
+      })
 
-        const res = await fetch('http://127.0.0.1:5000/api/delete-account', {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({ password })
-        })
-
-        if (res.ok) {
-            toast.success('Account deleted successfully')
-            handleLogout()
-            return true
-        } else {
-            const data = await res.json()
-            toast.error(data.error || 'Failed to delete account')
-            return false
-        }
+      if (!res.ok) {
+        throw new Error('Logout failed')
+      }
     } catch (error) {
-        console.error('Delete account error:', error)
-        toast.error('An error occurred while deleting account')
-        return false
+      console.error('Logout error:', error)
+      toast.error('Logout failed')
+    } finally {
+      handleLogout()
+      setLoading(false)
     }
-}
+  }
+
+  const deleteAccount = async (password) => {
+    try {
+      const token = localStorage.getItem('token')
+      if (!token) {
+        toast.error('Authentication required')
+        return false
+      }
+
+      const res = await fetch('https://contacthub.up.railway.app/api/delete-account', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ password })
+      })
+
+      if (res.ok) {
+        toast.success('Account deleted successfully')
+        handleLogout()
+        return true
+      } else {
+        const data = await res.json()
+        toast.error(data.error || 'Failed to delete account')
+        return false
+      }
+    } catch (error) {
+      console.error('Delete account error:', error)
+      toast.error('An error occurred while deleting account')
+      return false
+    }
+  }
 
   return (
     <AuthContext.Provider value={{
