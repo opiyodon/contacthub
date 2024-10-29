@@ -14,7 +14,7 @@ export function AuthProvider({ children }) {
   // Check authentication status on mount
   useEffect(() => {
     checkAuth()
-  }, [])
+  }, [checkAuth])
 
   const checkAuth = async () => {
     const token = localStorage.getItem('token')
